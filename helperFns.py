@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.io as spio
 import os
-import wheelWrapperFns as wheel
 import pandas as pd
 import pickle
 import scipy.stats as scs
@@ -167,11 +166,9 @@ def loadSavedFits(ID, dataBase, ending = '_trainingDataBias'):
 #####
 
 def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessionCutoff = None, 
-         accCutoff = 0, removeProbes = True, nrCheck = False, txt = None, useVel = False, 
-         thresh = 50, t_win = (.1, 1), untilTesting = True, spec_select = False):
+         accCutoff = 0, removeProbes = True, nrCheck = False, txt = None, untilTesting = True, spec_select = False):
 
     curPath = os.path.abspath(os.getcwd())
-    #base =  os.path.abspath(os.path.join(curPath,"../../projects/relevance_project/InactiveMice/"))
     base =  os.path.abspath(os.path.join(curPath,"data/MouseData/"))
 
     fTemp = base + '/' + ID
@@ -184,27 +181,13 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
 
     matFiles = curateSessions(matFiles,ID,keyword, untilTesting)
 
-    if useVel:
-        txtEnd = '_wheelRep.txt'
-        wheelFiles = [str(matFile[:-4]) + str(txtEnd) for matFile in (matFiles)]
+    txtEnd = '.txt'
+    taskFiles = [str(matFile[:-4]) + str(txtEnd) for matFile in (matFiles)]
 
-        txtEnd = '.txt'
-        taskFiles = [str(matFile[:-4]) + str(txtEnd) for matFile in (matFiles)]
+    matFiles = [mf for im, mf in enumerate(matFiles) if os.path.isfile(taskFiles[im])]
 
-        matFiles = [mf for im, mf in enumerate(matFiles) if np.logical_and(os.path.isfile(taskFiles[im]), os.path.isfile(wheelFiles[im]))]
-
-        txtEnd = '.txt'
-        taskFiles = [str(matFile[:-4]) + str(txtEnd) for matFile in (matFiles)]
-        txtEnd = '_wheelRep.txt'
-        wheelFiles = [str(matFile[:-4]) + str(txtEnd) for matFile in (matFiles)]
-    else:
-        txtEnd = '.txt'
-        taskFiles = [str(matFile[:-4]) + str(txtEnd) for matFile in (matFiles)]
-
-        matFiles = [mf for im, mf in enumerate(matFiles) if os.path.isfile(taskFiles[im])]
-
-        txtEnd = '.txt'
-        taskFiles = [str(matFile[:-4]) + str(txtEnd) for matFile in (matFiles)]
+    txtEnd = '.txt'
+    taskFiles = [str(matFile[:-4]) + str(txtEnd) for matFile in (matFiles)]
 
 # Initialize vectors
     
@@ -258,8 +241,6 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
 
             if ('message' in mat_contents):
                 if (np.size(mat_contents['message']) > 0):
-                    #if ('PBS' in mat_contents['message'][0].upper()):
-                    #    good = False
                     if ('MUSC' in mat_contents['message'][0].upper()):
                         good = False
 
@@ -296,8 +277,6 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
     # 3-5 are "Probe". For the majority of the files, the "category" is simply indexed from 1-3, where 1 is "Low",
     # 3 is "High" and 2 is "Probe". Here, we transform to "High = 1" and "Low = 0".
             
-            
-
             if (max(stimulus_category) == 3):
                 stimulus_category[stimulus_category == 1] = 0
                 stimulus_category[stimulus_category == 3] = 1
@@ -312,34 +291,27 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
     # For the oldest session files, recreate the "choice" vector by using the recorded trial category and accuracy.
     # Otherwise, use the "wheelDir" vector.
 
-            if useVel:
-                keyword = matFile.split('_')[-2]
-                choiceT, ac, rtt = getVelResp(ID, keyword, t_win = t_win, thresh = thresh)
-                choiceT = choiceT[startPt:endPt]
-                ac = ac[startPt:endPt]
-                rtt = rtt[startPt:endPt]
-                
+
+            if ('wheelDir' in mat_contents):
+                wDir = mat_contents['wheelDir'][0,startPt:endPt].copy()
+                #print(sessDateT)
+                #print(stimulus_category)
+                choiceT = getResp(ac, stimulus_category, mat_contents, respDir = wDir)
+                #print(choiceT)
+            elif ('lickDir' in mat_contents):
+                lDir = mat_contents['lickDir'][0,startPt:endPt].copy()
+                choiceT = getResp(ac, stimulus_category, mat_contents, respDir = lDir)
+                #print(choiceT)
             else:
-                if ('wheelDir' in mat_contents):
-                    wDir = mat_contents['wheelDir'][0,startPt:endPt].copy()
-                    #print(sessDateT)
-                    #print(stimulus_category)
-                    choiceT = getResp(ac, stimulus_category, mat_contents, respDir = wDir)
-                    #print(choiceT)
-                elif ('lickDir' in mat_contents):
-                    lDir = mat_contents['lickDir'][0,startPt:endPt].copy()
-                    choiceT = getResp(ac, stimulus_category, mat_contents, respDir = lDir)
-                    #print(choiceT)
-                else:
-                    choiceT = getResp(ac, stimulus_category, mat_contents)
-                
-                rtt = getRT(taskFile)
+                choiceT = getResp(ac, stimulus_category, mat_contents)
+            
+            rtt = getRT(taskFile)
 
-                if len(rtt) == 0:
-                    rtt = np.empty(np.size(choiceT))
-                    rtt[:] = np.nan
+            if len(rtt) == 0:
+                rtt = np.empty(np.size(choiceT))
+                rtt[:] = np.nan
 
-                rtt = rtt[startPt:endPt]
+            rtt = rtt[startPt:endPt]
             
             t = np.array(range(startPt,endPt))
 
@@ -595,48 +567,6 @@ def getResp(acc, stimulus_category, mat_contents, respDir = ()):
         choice[choice > 10] = respDir[choice > 10]
 
     return choice
-
-
-
-def getVelResp(ID, keyword, t_win = (.1,1), thresh = 50):
-
-    b, v, *_ = wheel.getVelInfo(ID, keyword = keyword)
-
-    t_win = (.1, 1)
-
-    df = pd.merge(v,b)
-    newChoices = wheel.velocityThresholding(df, thresh, t_win = t_win)
-    full = pd.merge(b, newChoices)
-
-    check = full['accuracy'][np.logical_and(full['wheelDir'] == 1, full['cat'] == 1)].mean()
-
-    if np.isnan(check):
-        check = full['accuracy'][np.logical_and(full['wheelDir'] == 0, full['cat'] == 3)].mean()
-
-    full['new_acc'] = full['accuracy']
-
-    if check == 1:
-        full.loc[np.logical_and(full['cat'] == 1, full['choice'] == -1), 'new_acc'] = 1
-        full.loc[np.logical_and(full['cat'] == 3, full['choice'] == -1), 'new_acc'] = 0
-        full.loc[np.logical_and(full['cat'] == 1, full['choice'] == 1), 'new_acc'] = 0
-        full.loc[np.logical_and(full['cat'] == 3, full['choice'] == 1), 'new_acc'] = 1
-        full.loc[np.isnan(full['choice']), 'new_acc'] = np.nan
-    elif check == 0:
-        full.loc[np.logical_and(full['cat'] == 1, full['choice'] == -1), 'new_acc'] = 0
-        full.loc[np.logical_and(full['cat'] == 3, full['choice'] == -1), 'new_acc'] = 1
-        full.loc[np.logical_and(full['cat'] == 1, full['choice'] == 1), 'new_acc'] = 1
-        full.loc[np.logical_and(full['cat'] == 3, full['choice'] == 1), 'new_acc'] = 0
-        full.loc[np.isnan(full['choice']), 'new_acc'] = np.nan
-
-    if check == 0:
-        full['choice'] = 2 - (full['choice']+1) - 1
-        full['f_vel'] = -1 * full['f_vel']
-
-    choiceT = (1 + full['choice'])/2
-    ac = full['new_acc'].copy()
-    rt = full['rt'].copy()
-
-    return choiceT, ac, rt
 
 def getRT(taskFile):
     

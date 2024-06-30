@@ -3,8 +3,9 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
 import scipy.stats as scs
-
 import clusteringFns as clf
+
+# Adapted from Roy et al, 2021
 
 COLORS = {'bias' : '#FAA61A', 
           's1' : "#A9373B", 's2' : "#2369BD", 
@@ -32,27 +33,8 @@ def getColors(string):
 
 colorsList = ('green', 'red', 'blue', 'orange', 'magenta', 'yellow', 'purple')
 
+def plot_weights(W, weight_dict=None, ax = None, colors=None, zorder=None, errorbar=None, days=None): # Adapted from Roy et al, 2021
 
-def plot_weights(W, weight_dict=None, ax = None,
-                 colors=None, zorder=None, errorbar=None, days=None):
-    '''Plots weights in a quick and reasonable way!
-    
-    Args:
-        W: weights to plot.
-        weight_dict: names of weights in W, used to color and label lines.
-        figsize: size of figure.
-        colors: a dict mapping weight names from `weight_dict` to colors.
-            Defaults to nice preset values for common weight names.
-        zorder: a dict mapping weight names from `weight_dict` to zorder.
-            Defaults to nice preset values for common weight names.
-        errorbar: optional array for size a 1 standard error at each trial
-            for each weight (same shape as W).
-        days: list of session lengths or trials index of session boundaries.
-    
-    Returns:
-        fig: The figure, to be modified further if necessary.
-    '''
-    
     ax = ax or plt.gca()
 
     # Some useful values to have around
@@ -101,20 +83,7 @@ def plot_weights(W, weight_dict=None, ax = None,
     
     return ax
     
-def plot_performance(dat, ax = None, xval_pL=None, sigma=50):
-    '''Plots empirical and (optional) cross-validated prediction of performance.
-    
-    Args:
-        dat: a standard Psytrack input dataset.
-        xval_pL: array of cross-validated P(y=0) for each trial in dat, the
-            output of crossValidation().
-        sigma: option passed to gaussian_filter controling smoothing of
-            performance curve.
-        figsize: size of figure.
-    
-    Returns:
-        fig: The figure, to be modified further if necessary.
-    '''
+def plot_performance(dat, ax = None, xval_pL=None, sigma=50): # Adapted from Roy et al, 2021
 
     if "correct" not in dat or "answer" not in dat:
         raise Exception("Please define a `correct` {0,1} and an `answer` {1,2} "
@@ -171,20 +140,7 @@ def plot_performance(dat, ax = None, xval_pL=None, sigma=50):
 
     return ax
 
-def plot_bias(dat, ax = None, xval_pL=None, sigma=50):
-    '''Plots empirical and (optional) cross-validated prediction of bias.
-    
-    Args:
-        dat: a standard Psytrack input dataset.
-        xval_pL: array of cross-validated P(y=0) for each trial in dat, the
-            output of crossValidation().
-        sigma: option passed to gaussian_filter controling smoothing of
-            performance curve.
-        figsize: size of figure.
-    
-    Returns:
-        fig: The figure, to be modified further if necessary.
-    '''
+def plot_bias(dat, ax = None, xval_pL=None, sigma=50): # Adapted from Roy et al, 2021
     
     ax = ax or plt.gca()
 
@@ -204,7 +160,6 @@ def plot_bias(dat, ax = None, xval_pL=None, sigma=50):
 
     ### Plotting
      
-
     # Smoothing vector for errorbars
     QQQ = np.zeros(10001)
     QQQ[5000] = 1
@@ -334,10 +289,6 @@ def plotClusters(X, x_pred, nPoints, mus = None, lambdas = None, ids = None, plo
     for ia, ax in enumerate(fig.axes):
         tempt = X[x_pred == un[ia],:].T
         
-        # idsT = np.array(ids[x_pred == un[ia]])
-        # tempM = [mun for mi, mun in enumerate(lambdas) if mu_IDs[mi] in idsT]
-        # tempM = round(np.mean(tempM),3)
-        # means.append(tempM)
         alphaT = 1
         lT = 1
         
@@ -355,122 +306,8 @@ def plotClusters(X, x_pred, nPoints, mus = None, lambdas = None, ids = None, plo
         
         ax.set_ylim(0,1)
         ax.axhline(0.5, color = 'k', linestyle = '--')
-        #ax.set_title('Cluster ' + str(un[ia]+1)) # + ', l = ' + str(np.round(tempM,2)))
 
     return fig, axs
-
-def plotClustersVert(X, x_pred, nPoints, mus = None, lambdas = None, ids = None, plotAvg = True):
-
-    #un = np.unique(x_pred)
-    un = [0,1]
-
-    fig, axs = plt.subplots(len(un), 1, figsize = (3,20)) #(4 + 2*len(un), 2.5))
-
-    for ia, ax in enumerate(fig.axes):
-        tempt = X[x_pred == un[ia],:].T
-        
-        # idsT = np.array(ids[x_pred == un[ia]])
-        # tempM = [mun for mi, mun in enumerate(lambdas) if mu_IDs[mi] in idsT]
-        # tempM = round(np.mean(tempM),3)
-        # means.append(tempM)
-
-        alphaT = 1
-        lT = 1
-        if plotAvg:
-            alphaT = 0.2
-            lTt = 3
-            ax.plot(np.array(range(0,nPoints)), tempt.T[:,0:nPoints].mean(0), linewidth = lTt, color = COLORS['s_low'], zorder = 3)
-            ax.plot(np.array(range(0,nPoints)), tempt.T[:,nPoints:(2*nPoints)].mean(0), linewidth = lTt, color = COLORS['s_high'], zorder = 3)
-
-        #for ii, temp in enumerate(tempt.T):
-
-            #ax.plot(np.array(range(0,nPoints)), temp[0:nPoints], linewidth = lT, color = COLORS['s_low'], alpha = alphaT, zorder = 1)
-            #ax.plot(np.array(range(0,nPoints)), temp[nPoints:(2*nPoints)], linewidth = lT, color = COLORS['s_high'], alpha = alphaT, zorder = 1)
-        
-        ax.set_ylim(0,1)
-        ax.axhline(0.5, color = 'k', linestyle = '--')
-        #ax.set_title('Cluster ' + str(un[ia]+1)) # + ', l = ' + str(np.round(tempM,2)))
-
-    return fig, axs
-
-def plotClustersVertAvgOnlyOneAx(X, x_pred, nPoints, mus = None, lambdas = None, ids = None, plotAvg = True):
-
-    un = np.unique(x_pred)
-
-    fig, ax = plt.subplots(1, 1, figsize = (3,20)) #(4 + 2*len(un), 2.5))
-
-    for ia, u in enumerate(x_pred):#ia, ax in enumerate(fig.axes):
-
-        tempt = X[ia,:].T
-        
-        # idsT = np.array(ids[x_pred == un[ia]])
-        # tempM = [mun for mi, mun in enumerate(lambdas) if mu_IDs[mi] in idsT]
-        # tempM = round(np.mean(tempM),3)
-        # means.append(tempM)
-        alphaT = 1
-        lT = 1
-        if plotAvg:
-            alphaT = 0.2
-            lTt = 2
-
-            if x_pred[ia] == 0:
-                ct = 'g'
-            else:
-                ct = 'm'
-
-            ax.plot(np.array(range(0,nPoints)), ia*-0.4 + tempt.T[0:nPoints], linewidth = lTt, color = ct, zorder = 3)
-            ax.axhline(ia*-0.4 + 0.5, color = 'k', linestyle = '--', linewidth = 0.5)
-
-            ax.fill_between(np.array(range(0,nPoints)), ia*-0.4 + tempt.T[0:nPoints], ia*-0.4 + 0.5, color = ct, alpha = 0.5)
-
-            #ax.plot(np.array(range(0,nPoints)), tempt.T[:,nPoints:(2*nPoints)].mean(0), linewidth = lTt, color = COLORS['s_high'], zorder = 3)
-
-        #for ii, temp in enumerate(tempt.T):
-
-        #    ax.plot(np.array(range(0,nPoints)), temp[0:nPoints], linewidth = lT, color = COLORS['s_low'], alpha = alphaT, zorder = 1)
-            #ax.plot(np.array(range(0,nPoints)), temp[nPoints:(2*nPoints)], linewidth = lT, color = COLORS['s_high'], alpha = alphaT, zorder = 1)
-        
-        #ax.set_ylim(0,1)
-        #ax.axhline(0.5, color = 'k', linestyle = '--')
-        #ax.set_title('Cluster ' + str(un[ia]+1)) # + ', l = ' + str(np.round(tempM,2)))
-
-    return fig, ax
-
-def plotClustersVertOneAx(X, x_pred, nPoints, mus = None, lambdas = None, ids = None, plotAvg = True):
-
-    un = np.unique(x_pred)
-
-    fig, ax = plt.subplots(1, 1, figsize = (3,20)) #(4 + 2*len(un), 2.5))
-
-    for ia, u in enumerate(x_pred):#ia, ax in enumerate(fig.axes):
-
-        tempt = X[ia,:].T
-
-        tempt = 1*(tempt - 0.5) + 0.5
-        
-        # idsT = np.array(ids[x_pred == un[ia]])
-        # tempM = [mun for mi, mun in enumerate(lambdas) if mu_IDs[mi] in idsT]
-        # tempM = round(np.mean(tempM),3)
-        # means.append(tempM)
-        alphaT = 1
-        lT = 1
-        if plotAvg:
-            alphaT = 0.2
-            lTt = 1.5
-
-            ax.plot(np.array(range(0,nPoints)), ia*-0.6 + tempt.T[0:nPoints], linewidth = lTt, color = COLORS['s_low'], zorder = 3)
-            ax.plot(np.array(range(0,nPoints)), ia*-0.6 + tempt.T[nPoints:(2*nPoints)], linewidth = lTt, color = COLORS['s_high'], zorder = 3)
-            ax.axhline(ia*-0.6 + 0.5, color = 'k', linestyle = '--', linewidth = 0.5)
-        #for ii, temp in enumerate(tempt.T):
-
-        #    ax.plot(np.array(range(0,nPoints)), temp[0:nPoints], linewidth = lT, color = COLORS['s_low'], alpha = alphaT, zorder = 1)
-            #ax.plot(np.array(range(0,nPoints)), temp[nPoints:(2*nPoints)], linewidth = lT, color = COLORS['s_high'], alpha = alphaT, zorder = 1)
-        
-        #ax.set_ylim(0,1)
-        #ax.axhline(0.5, color = 'k', linestyle = '--')
-        #ax.set_title('Cluster ' + str(un[ia]+1)) # + ', l = ' + str(np.round(tempM,2)))
-
-    return fig, ax
 
 def plotClustersVertThreeAx(X, X_avg, x_pred, nPoints, mus = None, lambdas = None, ids = None, plotAvg = True):
 
@@ -522,7 +359,6 @@ def plotClustersVertThreeAx(X, X_avg, x_pred, nPoints, mus = None, lambdas = Non
 
 
     return fig, ax
-
 
 def plotClustersVertAvgOnly(X, x_pred, nPoints, mus = None, lambdas = None, ids = None, plotAvg = True):
 
@@ -639,21 +475,18 @@ def plotQModel(Q_stored, H, L, binH, binL, eOT):
 
     return fig, axes
 
-def plot_and_wilcoxon(list1, list2, name1 = 'List 1', name2 = 'List 2', title = 'List 1 vs List 2', xl = None, yl = None):
+def plot_and_wilcoxon(list1, list2, name1 = 'List 1', name2 = 'List 2', xl = None, yl = None):
     
     fig, ax = plt.subplots(1,1, figsize = (1,1))
 
-    # Plotting the two lists against each other
     plt.scatter(list1, list2, 8, color = 'k')
     plt.xlabel(name1)
     plt.ylabel(name2)
-    #plt.title(title)
     plt.axline((1,1), slope = 1, linewidth = 1, color='k', linestyle = '--', zorder = 0)
     if xl is not None:
         plt.xlim(xl)
     if yl is not None:
         plt.ylim(yl)
-    #plt.show()
 
     # Computing the Wilcoxon signed-rank test
     stat, p = scs.wilcoxon(list1, list2)

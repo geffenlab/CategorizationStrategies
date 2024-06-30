@@ -1,6 +1,3 @@
-import pymc as pm
-import arviz as az
-
 from pybads import BADS
 
 import numpy as np
@@ -72,13 +69,10 @@ def fitBADS(sampled, st = defaultFitStruct, nF = 1):
 
         x0 = np.array(np.meshgrid(x0t[0], x0t[1], x0t[2], x0t[3])).T.reshape(-1,4)
 
-    #print(x0)
-
     fvals = np.zeros((np.size(x0,0),1))
     fit_params_t = np.zeros((np.size(x0,0),4))
 
     for rI, fv in enumerate(fvals):
-     #   print(x0[rI])
 
         bads = BADS(target, x0[rI], st['lower_bounds'], st['upper_bounds'], st['plausible_lower_bounds'], st['plausible_upper_bounds'], options = options)
         optimize_result = bads.optimize()
@@ -93,11 +87,6 @@ def fitBADS(sampled, st = defaultFitStruct, nF = 1):
 
     fvals.sort()
 
-    #print(fit_params_t)
-
-    # if len(fit_params_t) == 2:
-    #     fit_params_t = (fit_params_t[0], 13.8, 0.001, fit_params_t[1])
-
     fit_params = {
         'mean' : pd.DataFrame(fit_params_t),
     }
@@ -110,50 +99,11 @@ def fitBADS(sampled, st = defaultFitStruct, nF = 1):
 
     return fit_params, y_fit, function
 
-## pyMC Posterior Sampling
-
-def psychLapseTensor(p, x):
-    # mu, sigma, lambd, gamma
-    cd = 0.5 + 0.5 * pm.math.erf((x-p[0])/(p[1]*np.sqrt(2)))
-    yt = p[2]*p[3] + (1-p[2]) * cd
-    return yt
-
 def psychLapseReg(p, x):
     # mu, sigma, lambd, gamma
     cd = 0.5 + 0.5 * spc.erf((x-p[0])/(p[1]*np.sqrt(2)))
     yt = p[2]*p[3] + (1-p[2]) * cd
     return yt
-
-def fitPYMC(sampled, fx = psychLapseTensor, fxu = psychLapseReg):
-    df = pd.DataFrame(sampled)
-    x = np.unique(df['stimulus_frequency'])
-    y = 0*x.copy()
-    n = 0*x.copy()
-
-    for ix, xi in enumerate(x):
-        y[ix] = np.sum(df['choice'][df['stimulus_frequency'] == xi])
-        n[ix] = len(df['choice'][df['stimulus_frequency'] == xi])
-
-    with pm.Model() as psychModel:
-
-        mu = pm.Uniform('mu', lower=10, upper=20)
-        sigma = pm.Uniform('sigma', lower=10e-5, upper=10)
-        lambd = pm.Uniform('lambda', lower=0, upper=1)
-        gamma = pm.Uniform('gamma', lower=0, upper=1)
-
-        params = (mu, sigma, lambd, gamma)    
-
-        theta = pm.Deterministic('theta', fx(params, x))
-
-        y_ = pm.Binomial('y', p = theta, n = n, observed = y)
-        trace = pm.sample(chains=4, cores=4, tune=4000, progressbar = False)
-
-    fit_params = az.summary(trace, var_names=["~^theta"], filter_vars="regex")
-    y_fit = az.summary(trace, var_names=["^theta"], filter_vars="regex")
-    y_fit['stimulus_freq'] = x
-    y_fit.set_index('stimulus_freq')
-
-    return fit_params, y_fit, fxu
 
 ## Ensure that training tones are not overrepresented
 
@@ -181,7 +131,7 @@ def rebalanceStim(bDF):
 
 ## Full Fitting Function
 
-def getPsychFit(D, stc = 'default', nF = 1, fitMethod = 'pymc'):
+def getPsychFit(D, stc = 'default', nF = 1, fitMethod = 'bads'):
     
     if stc == 'training':
         st = trainingFitStruct
@@ -214,10 +164,7 @@ def getPsychFit(D, stc = 'default', nF = 1, fitMethod = 'pymc'):
         behaviorDict = pd.DataFrame(behaviorDict)
         sampled = rebalanceStim(behaviorDict)
 
-        if fitMethod == 'pymc':
-            fit_params, y_fit, function = fitPYMC(sampled)
-        elif fitMethod == 'bads':
-            fit_params, y_fit, function = fitBADS(sampled, st, nF)
+        fit_params, y_fit, function = fitBADS(sampled, st, nF)
 
         sessionDict = {
             'behavior' : behaviorDict,
@@ -226,8 +173,6 @@ def getPsychFit(D, stc = 'default', nF = 1, fitMethod = 'pymc'):
             'y_fit' : y_fit,
             'fit_method' : fitMethod,
         }       
-        
-        #sessionDF = pd.DataFrame(sessionDict)
         
         saveDict[str(sID)] = sessionDict
         

@@ -1,121 +1,12 @@
-
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
 import scipy.stats as scs
-from scipy.optimize import minimize # finding optimal params in models
-from scipy import stats             # statistical tools
 from scipy.signal import butter,filtfilt
-
-from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score
-
-seed = 1000
-from tslearn.clustering import TimeSeriesKMeans
-
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
 import helperFns as mf
 
 # Clustering Functions
 
-# First, Dimensionality Reduction: Reduce the traces to the first 10 principle components.
-
-def pca_kmeans(X, nPoints, n_components = 10, k = 3, plot = True):
-
-    pca = PCA(n_components)
-
-    # So, we produce a new matrix, with each learning trace defined by it's 10 principle components. We've gone from ~ 30,000 dimensions, to 1500 dimensions, to 10 dimensions.
-
-    X_pca = pca.fit_transform(X)
-
-    # How much of the variance do these components contain? Together they contain more than 98%.
-
-    print(pca.explained_variance_ratio_.cumsum())
-
-    Sum_of_squared_distances = []
-    var_score = []
-    db_score = []
-    sil_score = []
-
-    K = 1
-    kmeans = KMeans(n_clusters = K, random_state=0, n_init="auto")
-    km = kmeans.fit(X_pca)
-    x_pred = kmeans.fit_predict(X_pca)
-    Sum_of_squared_distances.append(km.inertia_)
-    sil_score.append(np.nan)
-    var_score.append(np.nan)
-    db_score.append(np.nan)
-
-    K = range(2,8)#np.size(X,0)-1)
-    for ki in K:
-        kmeans = KMeans(n_clusters = ki, random_state=0, n_init="auto")
-        km = kmeans.fit(X_pca)
-        x_pred = kmeans.fit_predict(X_pca)
-        Sum_of_squared_distances.append(km.inertia_)
-        var_score.append(calinski_harabasz_score(X_pca, x_pred))
-        db_score.append(davies_bouldin_score(X_pca, x_pred))
-        sil_score.append(silhouette_score(X_pca, x_pred))
-
-    #Sum_of_squared_distances = np.hstack(((np.nan),(np.diff(Sum_of_squared_distances))))
-    
-    #Sum_of_squared_distances = 
-    
-    K = range(1,8) #np.size(X,0)-1)
-
-    if plot:
-            
-        fig, axs = plt.subplots(1,k + 1, figsize=(24 ,4))
-
-        axs[0].plot(K, Sum_of_squared_distances, 'bx-', zorder = 1)
-        axs[0].set_xlabel('Number of Clusters')
-        axs[0].set_ylabel('Sum of Squared Distances')
-        axs[0].set_title('Elbow Method For Optimal K')
-
-        axs[0].plot(k,Sum_of_squared_distances[k-1], 'ro', zorder = 5)
-
-        ax3 = axs[0].twinx() 
-        ax3.plot(K, sil_score, 'mx-', zorder = 1)
-        ax3.plot(k,sil_score[k-1], 'ro', zorder = 5)
-
-        #ax2 = axs[0].twinx() 
-        #ax2.plot(K, var_score, 'gx-', zorder = 1)
-        #ax2.plot(k,var_score[k-1], 'ro', zorder = 5)
-
-
-# Some code from AlindGupta at GeeksForGeeks
-    kmeans = KMeans(n_clusters = k, random_state=0, n_init="auto")
-    x_pred = kmeans.fit_predict(X_pca)
-
-    if plot:
-
-        for ia, ax in enumerate(axs):
-            if ia > 0:
-                temp = X[x_pred == ia-1,:].T
-                ax.plot(np.array(range(0,np.size(X,1))), temp, linewidth = 1)
-                ax.plot(np.array(range(0,np.size(X,1))), temp.mean(1), linewidth = 5, color = 'black')
-                ax.set_ylim(-4,4)
-                ax.axvline(nPoints, color = 'k', linestyle = '--')
-
-                if nPoints*2.5 < np.size(X,1):
-                    ax.axvline(2*nPoints, color = 'k', linestyle = '--')
-                    
-                ax.set_title('Cluster ' + str(ia))
-
-        # Bias, S_High, S_Low
-        
-
-    else:
-        axs = None
-
-    return x_pred, X_pca, axs    
-
-
-
 ## Extracting Variables From Training Sessions
-
-# Magnitude of weights: This clearly needs to be relative to something? Or, maybe not. Since it'll be relative to the other mice
-    # in the correlation.
 
 def extractPredictorsFromWeights(loaded_dict, nTrain):
 
@@ -123,78 +14,14 @@ def extractPredictorsFromWeights(loaded_dict, nTrain):
     psytrack_weights = loaded_dict['psytrack']['wMode']
     psytrack_names =  np.array(list(loaded_dict['psytrack']['weights'].keys()))
 
-    s_high = np.transpose(psytrack_weights[psytrack_names == 's_high'])
-    s_low = np.transpose(psytrack_weights[psytrack_names == 's_low'])
     bias = np.transpose(psytrack_weights[psytrack_names == 'bias'])
-
-    s_l = s_low[-last:]
-    s_h = s_high[-last:]
     b = bias[-last:]
 
-    varSig_l = np.std(s_l + b)
-    varSig_h = np.std(s_h + b)
-    
-    avgVar = (varSig_h + varSig_l)/2 
-
-    dispSig_l = varSig_l/np.mean(s_l + b)
-    dispSig_h = varSig_h/np.mean(s_h + b)
-    
-    h_raw = np.mean(s_h)
-    l_raw = np.mean(s_l)
-
-    l_flipped =  -1 * np.mean(s_l)
-
-    p_l = 1/(1 + np.exp(-1 *(-1 * np.mean(s_l + b))))
-    p_h = 1/(1 + np.exp(-1 *(np.mean(s_h + b))))
-    
-    p_asym = (1 - p_l)/(1 - p_h + 1 - p_l)
-
-    #explt = np.std(b)/(varSig_l)
-    expl_l = dispSig_l
-
-    #var_rat = np.log(varSig_h/np.abs(np.mean(s_h))) - np.log(varSig_l/np.abs(np.mean(s_l)))
-    var_rat = np.log(varSig_h) - np.log(varSig_l)
-
-    #var_rat = np.log(varSig_h/np.abs(np.mean(s_h + b))) - np.log(varSig_l/np.abs(np.mean(s_l + b)))
-
-    #explt = np.std(b)/(varSig_h)
-    expl_h = dispSig_h
-
-    wL = -1 * np.mean(s_l + b)
-    wH = np.mean(s_h + b)
-
-    bias_x = np.mean(b)
     bias_var = np.std(b)
 
-    #asym = np.log(np.max((wH, 0.0001))) - np.log(np.max((-1*wL, 0.0001)))
-    #abs_asym = np.abs(asym)
-
-    asym = (wH)/(wH+wL)
-  
     df1t = {
         'mID' : loaded_dict['subject'],
-        'low_combined': wL,
-        'high_combined': wH,
-        'minW': np.min((wL, wH)),
-        'maxW': np.max((wL, wH)),   
-        'minS': np.min((-1*l_raw, h_raw)),
-        'maxS': np.max((-1*l_raw, h_raw)),            
-        'avgW': (wL + wH)/2,
-        'asymmetry': asym,
-        'raw_asym': (h_raw + l_raw)/2,
-        'expl_l': expl_l,
-        'expl_h': expl_h,
-        'bias': bias_x,
         'bias_var': bias_var,
-        's_low': l_raw,
-        's_high': h_raw,
-        'var_rat': var_rat,
-        'avgVar': varSig_h,
-        'p_l': p_l,
-        'p_h': p_h,
-        'avgP': 1 - (p_l + p_h)/2,
-        'minP': 1 - np.min((p_l, p_h)),
-        'p_asym': p_asym,
     }
 
     df1t = pd.DataFrame(df1t, index = [0])
@@ -202,8 +29,6 @@ def extractPredictorsFromWeights(loaded_dict, nTrain):
     df1t = df1t.drop('index', axis = 1)
 
     return df1t
-
-
 
 # Combine Testing Data Sessions
 
@@ -254,7 +79,7 @@ def extractFromTestingSession(loaded_dict, nTest, delay = 0, summary = True):
         elif fitType == 'bads':
             if np.size(dfT,1) > 1:
                 dfT = dfT[0] #.head(1)
-            normMu = (dfT[1] - minF)/(maxF - minF) #(dfT[0][1] - minF)/(maxF - minF)  
+            normMu = (dfT[1] - minF)/(maxF - minF) 
             slope = (1/dfT[2]) * (1/np.sqrt(2*np.pi))
             slope = np.min((slope, max_slope))
 
@@ -293,15 +118,11 @@ def extractFromTestingSession(loaded_dict, nTest, delay = 0, summary = True):
     tempS['exAcc'] = np.mean(exAccVec)
     return tempS
 
-
-
-
 ######
 
 def butter_lowpass_filter(data, cutoff, fs, order):
     nyq = fs / 2
     normal_cutoff = cutoff / nyq
-    # Get the filter coefficients 
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
     y = filtfilt(b, a, data)
     return y
@@ -326,19 +147,9 @@ def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2
 
     temp_mold = np.round(np.linspace(0,len(acc_low)-1, nPoints + 1))
 
-    wModeRaws = [] #np.zeros((2,len(temp_mold) - 1))
+    wModeRaws = [] 
 
     startRange = int(np.round(nPoints/11)) #9
-
-    #cutoff = 1
-    #fs = 300
-    #order = 2
-    
-    #acc_low_t_f = butter_lowpass_filter(acc_low_t[~np.isnan(acc_low_t)], cutoff, fs, order)
-    #acc_high_t_f = butter_lowpass_filter(acc_high_t[~np.isnan(acc_high_t)], cutoff, fs, order)
-
-    #acc_low_t[~np.isnan(acc_low_t)] = acc_low_t_f
-    #acc_high_t[~np.isnan(acc_high_t)] = acc_high_t_f
 
     binnedMean,binnedIdx, *_ = scs.binned_statistic(idx, 1 - acc_low_t, statistic=np.nanmean, bins = temp_mold, range=(idx.min(),idx.max()))
     binnedMean1 = pd.Series(binnedMean).rolling(smooth2,1).apply(lambda x : np.nanmean(x))
@@ -349,7 +160,6 @@ def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2
     diff2 = np.hstack(((0), np.diff(binnedMean)))
     
     st = np.mean(np.hstack((binnedMean1[0:startRange],binnedMean[0:startRange])))
-    #st_mid = np.mean(np.hstack((binnedMean1[startRange*3:startRange*4],binnedMean[startRange*3:startRange*4])))
 
     wModeDiff.extend(diff1)
     wModeDiff.extend(diff2)
@@ -380,3 +190,54 @@ def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2
 
     return nPoints, wModeRaws, wModeSigned, wModeDiff, wModeAvg #, switch
 
+def generateTraceMats(IDs, dataBase, smoothF = 15, nPoints = 100, smooth2 = 5, sizeQ = True):
+
+    rawTraceMatResized = np.full([len(IDs),nPoints*3], np.nan)
+    signedTraceMatResized = np.full([len(IDs),nPoints*2], np.nan)
+    diffTraceMatResized = rawTraceMatResized.copy()
+
+    nPointsVec = np.full([len(IDs),1], np.nan)
+
+    avgTraceMatResized = np.full([len(IDs),nPoints], np.nan)
+
+    for idi, ID in enumerate(IDs):
+
+        loaded_dict = mf.loadSavedFits(ID, dataBase, ending = '_trainingDataBias')
+
+        acc = np.array(loaded_dict['correct'])
+        cat = np.array(loaded_dict['answer'])
+        emptyMat = np.empty((1,np.size(acc)))
+        emptyMat[:] = np.nan
+        emptyMat = emptyMat.squeeze()
+        acc_low = emptyMat.copy()
+        acc_high = emptyMat.copy()
+        acc_low[cat == 1] = acc[cat == 1]
+        acc_high[cat == 2] = acc[cat == 2]
+
+        nPointsT, wModeRaws, wModeSigned, wModeDiff, wModeAvg = smoothLearningTraces(acc_low, acc_high, nPoints = nPoints, smoothF = smoothF, smooth2 = smooth2, sameSize = sizeQ)
+
+        if np.size(wModeRaws) > np.size(rawTraceMatResized,1):
+            adn = np.full([np.size(rawTraceMatResized,0),np.size(wModeRaws) - np.size(rawTraceMatResized,1)], np.nan)
+            
+            rawTraceMatResized = np.hstack([rawTraceMatResized, adn])
+            signedTraceMatResized = np.hstack([signedTraceMatResized, adn])
+            diffTraceMatResized = np.hstack([diffTraceMatResized, adn])
+            avgTraceMatResized = np.hstack([avgTraceMatResized, adn])
+
+        elif np.size(wModeRaws) < np.size(rawTraceMatResized,1):
+            adn = np.squeeze(np.full([1, np.size(rawTraceMatResized,1) - np.size(wModeRaws)], np.nan))
+
+            wModeRaws = np.hstack([wModeRaws, adn])
+            wModeSigned = np.hstack([wModeSigned, adn])
+            wModeDiff = np.hstack([wModeDiff, adn])
+            wModeAvg = np.hstack([wModeAvg, adn])
+
+        rawTraceMatResized[idi,:] = wModeRaws
+        signedTraceMatResized[idi,:] = wModeSigned
+        diffTraceMatResized[idi,:] = wModeDiff
+        avgTraceMatResized[idi,:] = wModeAvg
+
+    signedTraceMatResized = pd.DataFrame(signedTraceMatResized, index = IDs)
+    avgTraceMatResized = pd.DataFrame(avgTraceMatResized, index = IDs)
+
+    return signedTraceMatResized, avgTraceMatResized

@@ -711,6 +711,11 @@ def calculate_pvalues_spearman(df):
         for c in df.columns:
             tmp = df[df[r].notnull() & df[c].notnull()]
             res = scs.spearmanr(tmp[r], tmp[c])
-            pvalues[r][c] = round(res.pvalue, 3)
-            corr[r][c] = round(res.statistic, 3)
+
+            #pvalues[r][c] = round(res.pvalue, 3)
+            #corr[r][c] = round(res.statistic, 3)
+
+            pvalues.loc[c,r] = round(res.pvalue, 3)
+            corr.loc[c,r] = round(res.statistic, 3)
+
     return pvalues, corr

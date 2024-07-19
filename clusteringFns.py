@@ -1,13 +1,12 @@
+## Set of functions for transforming and clustering trajectories
+
 import scipy.stats as scs
 from scipy.signal import butter,filtfilt
 import numpy as np
 import pandas as pd
 import helperFns as mf
 
-# Clustering Functions
-
-## Extracting Variables From Training Sessions
-
+# Extracting Variables From Training Sessions
 def extractPredictorsFromWeights(loaded_dict, nTrain):
 
     last = np.sum(loaded_dict['dayLength'][-nTrain:])
@@ -31,7 +30,6 @@ def extractPredictorsFromWeights(loaded_dict, nTrain):
     return df1t
 
 # Combine Testing Data Sessions
-
 def extractFromTestingSession(loaded_dict, nTest, delay = 0, summary = True):
 
     fitType = loaded_dict['1']['fit_method']
@@ -174,21 +172,19 @@ def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2
     if st < 0.5:
         wModeSigned.extend(1 - binnedMean)
         wModeSigned.extend(1 - binnedMean1)
-        #wModeSigned.extend(1 - (binnedMean1 + binnedMean)/2)  
 
         wModeAvg.extend(1 - (binnedMean1 + binnedMean)/2)
         switch = 1
     else:
         wModeSigned.extend(binnedMean1)
         wModeSigned.extend(binnedMean)
-        #wModeSigned.extend((binnedMean1 + binnedMean)/2)
         
         wModeAvg.extend((binnedMean1 + binnedMean)/2)
         switch = 0
 
     wModeSigned = np.array(wModeSigned)
 
-    return nPoints, wModeRaws, wModeSigned, wModeDiff, wModeAvg #, switch
+    return nPoints, wModeRaws, wModeSigned, wModeDiff, wModeAvg
 
 def generateTraceMats(IDs, dataBase, smoothF = 15, nPoints = 100, smooth2 = 5, sizeQ = True):
 

@@ -1,3 +1,5 @@
+## Set of functions for loading, curating and transforming data
+
 import numpy as np
 import scipy.io as spio
 import os
@@ -5,125 +7,16 @@ import pandas as pd
 import pickle
 import scipy.stats as scs
 
-#
-
-def curateSessions(matFiles,ID,keyword, untilTesting):
-    
-    if keyword == "training":
-        if untilTesting == False:
-            match ID:
-                case 'GS027': # For GS mice, focus on the sessions for the single tones.
-                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210811)]
-                case 'GS028': # For GS mice, focus on the sessions for the single tones. 
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210524)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210716)]            
-                case 'GS029': # For GS mice, focus on the sessions for the single tones.
-                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210728)] 
-                case 'GS030': # For GS mice, focus on the sessions for the single tones.
-                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210812)]
-                case 'GS037':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210702)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210817)]
-                case 'GS040':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210702)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210810)]
-                case 'JC025': # For JC025, remove the sessions post-5/08/21, as the mouse was re-trained on a different set.
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) < 210508)]
-                case 'JC028': # For JC028, remove the sessions post-5/08/21, as the mouse was re-trained on a different set.
-                    matFiles = [matFile for matFile in matFiles if ('210416' not in matFile)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) < 210508)]            
-                case 'JC029':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210602)] 
-                case 'JC044':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211128)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 211229)]
-                case 'JC047':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211109)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 211201)]
-                    matFiles = [matFile for matFile in matFiles if ('211128' not in matFile)]
-                case 'JC048':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211109)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 211214)]
-                case 'JC052':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211130)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 211228)]
-                case 'JC057':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220125)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220218)]
-                case 'JC059':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220126)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220225)]
-                case 'JC061':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220228)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220418)]
-                case 'JC062':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220228)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220406)]
-                case 'JC067':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220504)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220530)]
-        else:
-            match ID:
-                case 'GS027': # For GS mice, focus on the sessions for the single tones.
-                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
-                case 'GS028': # For GS mice, focus on the sessions for the single tones. 
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210524)]        
-                case 'GS029': # For GS mice, focus on the sessions for the single tones.
-                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
-                case 'GS030': # For GS mice, focus on the sessions for the single tones.
-                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
-                case 'GS037':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210702)]
-                case 'GS040':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210702)]
-                case 'JC025': # For JC025, remove the sessions post-5/08/21, as the mouse was re-trained on a different set.
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) < 210508)]
-                case 'JC028': # For JC028, remove the sessions post-5/08/21, as the mouse was re-trained on a different set.
-                    matFiles = [matFile for matFile in matFiles if ('210416' not in matFile)]
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) < 210508)]            
-                case 'JC029':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210602)] 
-                case 'JC044':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211128)]
-                case 'JC047':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211109)]
-                    matFiles = [matFile for matFile in matFiles if ('211128' not in matFile)]
-                case 'JC048':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211109)]
-                case 'JC052':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211129)]
-                case 'JC057':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220125)]
-                case 'JC059':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220126)]
-                case 'JC061':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220228)]
-                case 'JC062':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220228)]
-                case 'JC067':
-                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220504)]
-    return matFiles
-
-# Functions For Loading .MAT Files
-
+# Locating desired files 
 def find_files(fileend, keyword, folder):
     result = []
-# Walking top-down from the root
     for root, dirs, files in os.walk(folder):
         for file in files:
             if file.endswith(fileend) and keyword in file:
                 result.append(os.path.join(root, file))
     return result
 
+# Loading .MAT Files
 def _todict(matobj):
     '''
     A recursive function which constructs from matobjects nested dictionaries
@@ -163,7 +56,7 @@ def loadSavedFits(ID, dataBase, ending = '_trainingDataBias'):
         loaded_dict = pickle.load(f)
     return loaded_dict
 
-#####
+# Curating and transforming behavioral data
 
 def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessionCutoff = None, 
          accCutoff = 0, removeProbes = True, nrCheck = False, txt = None, untilTesting = True, spec_select = False):
@@ -294,14 +187,10 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
 
             if ('wheelDir' in mat_contents):
                 wDir = mat_contents['wheelDir'][0,startPt:endPt].copy()
-                #print(sessDateT)
-                #print(stimulus_category)
                 choiceT = getResp(ac, stimulus_category, mat_contents, respDir = wDir)
-                #print(choiceT)
             elif ('lickDir' in mat_contents):
                 lDir = mat_contents['lickDir'][0,startPt:endPt].copy()
                 choiceT = getResp(ac, stimulus_category, mat_contents, respDir = lDir)
-                #print(choiceT)
             else:
                 choiceT = getResp(ac, stimulus_category, mat_contents)
             
@@ -488,8 +377,6 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
 
                 sessDate.append(sessDateT)
 
-                #filename.extend(np.array(matFile.split('-')[-2]))
-
                 dayLength.append(np.size(ct))
                 
                 if (txt != None):
@@ -500,9 +387,6 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
                     s_low = np.array(s_l)[:, None],
                     s_avg = np.array(s_avg)[:, None],
                     c = np.array(c)[:, None])
-                    #ws = np.array(ws)[:,None],
-                    #ls = np.array(ls)[:,None])
-                    #h = np.array(h)[:, None],
 
     D = dict(
         subject = ID,
@@ -519,18 +403,122 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
         dayLength = np.array(dayLength),
     )
 
-    #print(D['y'])
-
     if nrCheck:
         return D, nrDict
     else:
         return D
 
+# Curating sessions
+def curateSessions(matFiles,ID,keyword, untilTesting):
+    
+    if keyword == "training":
+        if untilTesting == False:
+            match ID:
+                case 'GS027':
+                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210811)]
+                case 'GS028': 
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210524)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210716)]            
+                case 'GS029':
+                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210728)] 
+                case 'GS030':
+                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210812)]
+                case 'GS037':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210702)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210817)]
+                case 'GS040':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210702)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 210810)]
+                case 'JC025': # For JC025, remove the sessions post-5/08/21, as the mouse was re-trained on a different set.
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) < 210508)]
+                case 'JC028': # For JC028, remove the sessions post-5/08/21, as the mouse was re-trained on a different set.
+                    matFiles = [matFile for matFile in matFiles if ('210416' not in matFile)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) < 210508)]            
+                case 'JC029':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210602)] 
+                case 'JC044':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211128)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 211229)]
+                case 'JC047':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211109)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 211201)]
+                    matFiles = [matFile for matFile in matFiles if ('211128' not in matFile)]
+                case 'JC048':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211109)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 211214)]
+                case 'JC052':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211130)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 211228)]
+                case 'JC057':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220125)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220218)]
+                case 'JC059':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220126)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220225)]
+                case 'JC061':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220228)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220418)]
+                case 'JC062':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220228)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220406)]
+                case 'JC067':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220504)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) <= 220530)]
+        else:
+            match ID:
+                case 'GS027':
+                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
+                case 'GS028':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210524)]        
+                case 'GS029':
+                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
+                case 'GS030':
+                    matFiles = [matFile for matFile in matFiles if ('Lowered' not in matFile)]   
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) > 210630)]
+                case 'GS037':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210702)]
+                case 'GS040':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210702)]
+                case 'JC025': # For JC025, remove the sessions post-5/08/21, as the mouse was re-trained on a different set.
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) < 210508)]
+                case 'JC028': # For JC028, remove the sessions post-5/08/21, as the mouse was re-trained on a different set.
+                    matFiles = [matFile for matFile in matFiles if ('210416' not in matFile)]
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) < 210508)]            
+                case 'JC029':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 210602)] 
+                case 'JC044':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211128)]
+                case 'JC047':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211109)]
+                    matFiles = [matFile for matFile in matFiles if ('211128' not in matFile)]
+                case 'JC048':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211109)]
+                case 'JC052':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 211129)]
+                case 'JC057':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220125)]
+                case 'JC059':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220126)]
+                case 'JC061':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220228)]
+                case 'JC062':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220228)]
+                case 'JC067':
+                    matFiles = [matFile for matFile in matFiles if (int(matFile.split('_')[-2]) >= 220504)]
+    return matFiles
+
 def getStimFromIdx(mat_contents):
 
     curPath = os.path.abspath(os.getcwd())
     stim_base = os.path.abspath(os.path.join(curPath,"data/Stimuli/"))
-    #stim_base = os.path.normpath(stim_base)
 
     stimFile = stim_base + '/' + mat_contents['params']['stimName'][0][0][0]
     stimFile = os.path.normpath(stimFile)
@@ -545,20 +533,13 @@ def getStimFromIdx(mat_contents):
 
 def getResp(acc, stimulus_category, mat_contents, respDir = ()):    
 
-    #matFile = '/Users/jaredcollina/Documents/CODE/Projects/2AFC_Jared/projects/relevance_project/InactiveMice/JC028/JC028_210422_testing.mat'
-    #mat_contents = spio.loadmat(matFile)
-
     choice = np.array(stimulus_category.copy())
     choice[acc == 0] = 1 - choice[acc == 0]
     choice = np.where(acc == 2, np.nan, choice)
     cc = choice.copy()
 
-    #print(choice)
-    #print(np.nanmax(choice))
+    if  len(respDir) > 0:
 
-    if  len(respDir) > 0: #np.logical_and(np.nanmax(choice) > 10, len(wheelDir) > 0):
-
-        #print('wheelDir Used')
         respDir -= 1
         
         if (mat_contents['params']['rewardContingency'][0][0][0][0] == 2):
@@ -570,14 +551,11 @@ def getResp(acc, stimulus_category, mat_contents, respDir = ()):
 
 def getRT(taskFile):
     
-    #f = open(taskFile,'r')
-
     try:
 
         with open(taskFile, 'r') as f:
             mystr = f.read()
 
-        #mystr = f.read()
         lines = [line for line in mystr.split('\n') if line.strip() != '']
 
         for ii, tx in enumerate(lines):
@@ -634,6 +612,7 @@ def getRT(taskFile):
 
     return rt
 
+# Generate structure with information about muscimol and control session dates
 def muscimolStruct():
 
     injectionDates = {}
@@ -711,10 +690,6 @@ def calculate_pvalues_spearman(df):
         for c in df.columns:
             tmp = df[df[r].notnull() & df[c].notnull()]
             res = scs.spearmanr(tmp[r], tmp[c])
-
-            #pvalues[r][c] = round(res.pvalue, 3)
-            #corr[r][c] = round(res.statistic, 3)
-
             pvalues.loc[c,r] = round(res.pvalue, 3)
             corr.loc[c,r] = round(res.statistic, 3)
 

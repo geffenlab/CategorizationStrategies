@@ -1,3 +1,5 @@
+## Set of functions for plotting and visualization. Elements adapted from Roy et al, 2021
+
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -5,26 +7,14 @@ from scipy.ndimage import gaussian_filter
 import scipy.stats as scs
 import clusteringFns as clf
 
-# Adapted from Roy et al, 2021
-
 COLORS = {'bias' : '#FAA61A', 
-          's1' : "#A9373B", 's2' : "#2369BD", 
-          's_a' : "#A9373B", 's_b' : "#2369BD", 
-          'p("H"|H)' : "#A9373B", 'p("H"|L)' : "#2369BD", 
           's_high' : "#A9373B", 's_low' : "#2369BD",
           'Φ(s_high + bias)' : "#A9373B", 'Φ(s_low + bias)' : "#2369BD",          
-          'sR' : "#A9373B", 'sL' : "#2369BD",
-          'cR' : "#A9373B", 'cL' : "#2369BD",
           'c' : '#59C3C3', 'h' : '#9593D9', 's_avg' : '#99CC66',
           'emp_perf': '#E32D91', 'emp_bias': '#9252AB'}
-ZORDER = {'bias' : 2, 
-          's1' : 3, 's2' : 3, 
-          's_a' : 3, 's_b' : 3, 
-          'p("H"|H)' : 3, 'p("H"|L)' : 3,           
+ZORDER = {'bias' : 2,         
           's_high' : 3, 's_low' : 3,
           'Φ(s_high + bias)' : 3, 'Φ(s_low + bias)' : 3,          
-          'sR' : 3, 'sL' : 3,
-          'cR' : 3, 'cL' : 3,
           'c' : 1, 'h' : 1, 's_avg' : 1}
 
 
@@ -316,9 +306,9 @@ def plotClustersVertThreeAx(X, X_avg, x_pred, nPoints, mus = None, lambdas = Non
 
     un = np.unique(x_pred)
 
-    fig, ax = plt.subplots(1, 3, figsize = (8,20)) #(4 + 2*len(un), 2.5))
+    fig, ax = plt.subplots(1, 3, figsize = (8,20))
 
-    for ia, u in enumerate(x_pred):#ia, ax in enumerate(fig.axes):
+    for ia, u in enumerate(x_pred):
 
         tempt = X[ia,:].T
         tempt = 1*(tempt - 0.5) + 0.5
@@ -330,12 +320,10 @@ def plotClustersVertThreeAx(X, X_avg, x_pred, nPoints, mus = None, lambdas = Non
         lTt = 1.5
 
         ax[0].plot(np.array(range(0,nPoints)), ia*-scale1 + tempt.T[0:nPoints], linewidth = lTt, color = COLORS['s_low'], zorder = 3)
-        #ax[0].plot(np.array(range(0,nPoints)), ia*-scale1 + tempt.T[nPoints:(2*nPoints)], linewidth = lTt, color = COLORS['s_high'], zorder = 3)
         ax[0].axhline(ia*-scale1 + 0.5, color = 'k', linestyle = '--', linewidth = 0.5)
 
         ax[0].fill_between(np.array(range(0,nPoints)), ia*-scale1 + tempt.T[0:nPoints], ia*-scale1 + 0.5, color = COLORS['s_low'], alpha = 0.5)
 
-        #ax[0].plot(np.array(range(0,nPoints)), ia*-0.6 + tempt.T[0:nPoints], linewidth = lTt, color = COLORS['s_low'], zorder = 3)
         ax[1].plot(np.array(range(0,nPoints)), ia*-scale1 + tempt.T[nPoints:(2*nPoints)], linewidth = lTt, color = COLORS['s_high'], zorder = 3)
         ax[1].axhline(ia*-scale1 + 0.5, color = 'k', linestyle = '--', linewidth = 0.5)
 
@@ -364,7 +352,7 @@ def plotClustersVertAvgOnly(X, x_pred, nPoints, mus = None, lambdas = None, ids 
 
     un = np.unique(x_pred)
 
-    fig, ax = plt.subplots(1, 1, figsize = (3,20)) #(4 + 2*len(un), 2.5))
+    fig, ax = plt.subplots(1, 1, figsize = (3,20))
 
     ia = 0
 
@@ -377,22 +365,16 @@ def plotClustersVertAvgOnly(X, x_pred, nPoints, mus = None, lambdas = None, ids 
         alphaT = 0.2
         lTt = 3
         ax.plot(np.array(range(0,nPoints)), tempt.T[:,0:nPoints].mean(0), linewidth = lTt, color = 'm', zorder = 3)
-    #for ii, temp in enumerate(tempt.T):
-        #ax.plot(np.array(range(0,nPoints)), temp[0:nPoints], linewidth = lT, color = 'm', alpha = alphaT, zorder = 1)
-       
+
     tempt = X[x_pred == 0,:].T
 
     if plotAvg:
         alphaT = 0.2
         lTt = 3
         ax.plot(np.array(range(0,nPoints)), tempt.T[:,0:nPoints].mean(0), linewidth = lTt, color = 'g', zorder = 3)
-    #for ii, temp in enumerate(tempt.T):
-        #ax.plot(np.array(range(0,nPoints)), temp[0:nPoints], linewidth = lT, color = 'g', alpha = alphaT, zorder = 1)        
-
 
         ax.set_ylim(0,1)
         ax.axhline(0.5, color = 'k', linestyle = '--')
-        #ax.set_title('Cluster ' + str(un[ia]+1)) # + ', l = ' + str(np.round(tempM,2)))
 
     return fig, ax
 
@@ -400,17 +382,12 @@ def plotDifSizeClustersAvgOnlyOneAx(X, x_pred, nPointsVec, mus = None, lambdas =
 
     un = np.unique(x_pred)
 
-    fig, ax = plt.subplots(1, 1, figsize = (5,3)) #(4 + 2*len(un), 2.5))
+    fig, ax = plt.subplots(1, 1, figsize = (5,3))
 
-    for ia, u in enumerate(x_pred):#ia, ax in enumerate(fig.axes):
+    for ia, u in enumerate(x_pred):
 
         tempt = X[ia,:].T
         
-        # idsT = np.array(ids[x_pred == un[ia]])
-        # tempM = [mun for mi, mun in enumerate(lambdas) if mu_IDs[mi] in idsT]
-        # tempM = round(np.mean(tempM),3)
-        # means.append(tempM)
-
         nPoints = int(nPointsVec[ia,0])
         print(nPoints)
 

@@ -1,3 +1,5 @@
+## Set of functions for fitting psychometric curves
+
 from pybads import BADS
 
 import numpy as np
@@ -204,7 +206,3 @@ def calculate_pvalues_spearman(df):
             pvalues[r][c] = round(res.pvalue, 3)
             corr[r][c] = round(res.statistic, 3)
     return pvalues, corr
-
-
-#### Muscimol Bootstrapping
-

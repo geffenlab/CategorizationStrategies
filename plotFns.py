@@ -8,13 +8,23 @@ import scipy.stats as scs
 import clusteringFns as clf
 
 COLORS = {'bias' : '#FAA61A', 
+          's1' : "#A9373B", 's2' : "#2369BD", 
+          's_a' : "#A9373B", 's_b' : "#2369BD", 
+          'p("H"|H)' : "#A9373B", 'p("H"|L)' : "#2369BD", 
           's_high' : "#A9373B", 's_low' : "#2369BD",
           'Φ(s_high + bias)' : "#A9373B", 'Φ(s_low + bias)' : "#2369BD",          
+          'sR' : "#A9373B", 'sL' : "#2369BD",
+          'cR' : "#A9373B", 'cL' : "#2369BD",
           'c' : '#59C3C3', 'h' : '#9593D9', 's_avg' : '#99CC66',
           'emp_perf': '#E32D91', 'emp_bias': '#9252AB'}
-ZORDER = {'bias' : 2,         
+ZORDER = {'bias' : 2, 
+          's1' : 3, 's2' : 3, 
+          's_a' : 3, 's_b' : 3, 
+          'p("H"|H)' : 3, 'p("H"|L)' : 3,           
           's_high' : 3, 's_low' : 3,
           'Φ(s_high + bias)' : 3, 'Φ(s_low + bias)' : 3,          
+          'sR' : 3, 'sL' : 3,
+          'cR' : 3, 'cL' : 3,
           'c' : 1, 'h' : 1, 's_avg' : 1}
 
 
@@ -348,11 +358,33 @@ def plotClustersVertThreeAx(X, X_avg, x_pred, nPoints, mus = None, lambdas = Non
 
     return fig, ax
 
+def plotClustersVert(X, x_pred, nPoints, mus = None, lambdas = None, ids = None, plotAvg = True):
+
+    un = [0,1]
+
+    fig, axs = plt.subplots(len(un), 1, figsize = (3,5))
+
+    for ia, ax in enumerate(fig.axes):
+        tempt = X[x_pred == un[ia],:].T
+    
+        alphaT = 1
+        lT = 1
+        if plotAvg:
+            alphaT = 0.2
+            lTt = 3
+            ax.plot(np.array(range(0,nPoints)), tempt.T[:,0:nPoints].mean(0), linewidth = lTt, color = COLORS['s_low'], zorder = 3)
+            ax.plot(np.array(range(0,nPoints)), tempt.T[:,nPoints:(2*nPoints)].mean(0), linewidth = lTt, color = COLORS['s_high'], zorder = 3)
+
+        ax.set_ylim(0,1)
+        ax.axhline(0.5, color = 'k', linestyle = '--')
+
+    return fig, axs
+
 def plotClustersVertAvgOnly(X, x_pred, nPoints, mus = None, lambdas = None, ids = None, plotAvg = True):
 
     un = np.unique(x_pred)
 
-    fig, ax = plt.subplots(1, 1, figsize = (3,20))
+    fig, ax = plt.subplots(1, 1, figsize = (3,5))
 
     ia = 0
 
@@ -477,23 +509,31 @@ def plot_and_wilcoxon(list1, list2, name1 = 'List 1', name2 = 'List 2', xl = Non
 
 def plotFitSimulations(sim, reps, nPoints, smoothF, smooth2):
 
-    sim_high = np.mean(sim['sim_high'], axis = 0)
-    std_high = np.std(sim['sim_high'], axis = 0)/np.sqrt(reps)
+    if sim['sim_high'].ndim == 1:
+        sim_high = sim['sim_high']
+        std_high = 0*sim['sim_high']
 
-    sim_low = np.mean(sim['sim_low'], axis = 0)
-    std_low = np.std(sim['sim_low'], axis = 0)/np.sqrt(reps)
+        sim_low = sim['sim_low']
+        std_low = 0*sim['sim_low']
+    else:
+        sim_high = np.mean(sim['sim_high'], axis = 0)
+        std_high = np.std(sim['sim_high'], axis = 0)/np.sqrt(reps)
+
+        sim_low = np.mean(sim['sim_low'], axis = 0)
+        std_low = np.std(sim['sim_low'], axis = 0)/np.sqrt(reps)
 
     nPs, simTrace, simTraceSigned = clf.smoothLearningTraces(sim_low, sim_high, nPoints = nPoints, smoothF = smoothF, smooth2 = smooth2)[0:3]
 
     nPs, simStd, x = clf.smoothLearningTraces(std_low, std_high, nPoints = nPoints, smoothF = smoothF, smooth2 = smooth2)[0:3]
     simStd[0:nPoints] = 1 - simStd[0:nPoints]
 
-    nPs, rawTrace, rawTraceSigned = clf.smoothLearningTraces(sim['acc_low'], sim['acc_high'], nPoints = nPoints, smoothF = smoothF, smooth2 = smooth2)[0:3]
+    if 'acc_low' in sim:
+        nPs, rawTrace, rawTraceSigned = clf.smoothLearningTraces(sim['acc_low'], sim['acc_high'], nPoints = nPoints, smoothF = smoothF, smooth2 = smooth2)[0:3]
 
     fig, ax = plt.subplots(1,1)
-
-    ax.plot(np.array(range(0,nPoints)), rawTrace[0:nPoints], linewidth = 2, color = getColors('s_low'), alpha = 1, zorder = 5)
-    ax.plot(np.array(range(0,nPoints)), rawTrace[nPoints:(2*nPoints)], linewidth = 2, color = getColors('s_high'), alpha = 1, zorder = 5)
+    if 'acc_low' in sim:
+        ax.plot(np.array(range(0,nPoints)), rawTrace[0:nPoints], linewidth = 2, color = getColors('s_low'), alpha = 1, zorder = 5)
+        ax.plot(np.array(range(0,nPoints)), rawTrace[nPoints:(2*nPoints)], linewidth = 2, color = getColors('s_high'), alpha = 1, zorder = 5)
 
     ax.plot(np.array(range(0,nPoints)), simTrace[0:nPoints], linewidth = 1, linestyle = '--', color = getColors('s_low'), alpha = 1, zorder = 3)
     ax.fill_between(np.array(range(0,nPoints)), simTrace[0:nPoints] - simStd[0:nPoints], simTrace[0:nPoints] + simStd[0:nPoints], facecolor=getColors('s_low'), zorder=1, alpha=0.2)

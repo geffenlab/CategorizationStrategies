@@ -32,7 +32,7 @@ def simulateLearning(mp, stimCat = None):
     for t in range(mp['N'] - 1):
 
         wT = stim_stored[t] * Q + mp['bias']
-        pH = 1/(1 + np.exp(-(5 * np.exp(-mp['theta'])) * np.sum(wT)))
+        pH = 1/(1 + np.exp(-5 * np.sum(wT)))
 
         choiceProb[t] = pH
 
@@ -118,9 +118,7 @@ def fitLearning(guesses, mp, choice, stim_cat):
             
             wT = stim_stored[t] * Q + mp['bias']
             
-            #print(Q)
-
-            pH = 1/(1 + np.exp(-(5 * np.exp(-mp['theta'])) * np.sum(wT)))    
+            pH = 1/(1 + np.exp(-5 * np.sum(wT)))    
             p = (1-pH, pH)
 
             choiceProb[t] = p[int(choice[t])]
@@ -221,7 +219,6 @@ def simulateFromFit(ID, mfN, R = 1, folder = 'data/RL_Data'):
         'N': N,
         'alpha': np.nan,
         'beta': 1000,
-        'theta': 0,
         'bias': np.nan,
         'init_Q': [0,0],
         'max_num_cts': 3,
@@ -265,5 +262,43 @@ def simulateFromFit(ID, mfN, R = 1, folder = 'data/RL_Data'):
         'acc_low': acc_low,
     }
 
+    return res
+
+def simulateFromParameters(model_params, R = 1):
+
+    print('Starting Learning Simulation')
+
+    learnedCutOff = 0.75
+
+    sim_high_mat = []
+    sim_low_mat = []
+    stim_stored_mat = []
+    choice_mat = []
+
+    for r in range(0,R):
+        
+        stim_stored, choice, reward, Q_stored, choiceProb =  simulateLearning(model_params)
+        sim_h, sim_l, hx, lx, h_prob, l_prob, eOT = generateLearningCurves(stim_stored, choice, choiceProb, learnedCutOff = learnedCutOff)
+        
+        if len(sim_high_mat) == 0:
+            sim_high_mat = sim_h
+            sim_low_mat = sim_l
+            stim_stored_mat = stim_stored
+            choice_mat = choice
+        else:
+            sim_high_mat = np.vstack((sim_high_mat, sim_h))
+            sim_low_mat = np.vstack((sim_low_mat, sim_l))
+            stim_stored_mat = np.vstack((stim_stored_mat, stim_stored))
+            choice_mat = np.vstack((choice_mat, choice))
+
+    sim_low_mat = 1 - sim_low_mat
+
+
+    res = {
+        'sim_high': sim_high_mat,
+        'sim_low': sim_low_mat,
+        'stim_stored': stim_stored_mat,
+        'choice': choice_mat,
+    }
 
     return res

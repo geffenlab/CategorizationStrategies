@@ -3,6 +3,7 @@
 import scipy.stats as scs
 from scipy.signal import butter,filtfilt
 import numpy as np
+import warnings
 import pandas as pd
 import helperFns as mf
 
@@ -149,13 +150,16 @@ def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2
 
     startRange = int(np.round(nPoints/11)) #9
 
-    binnedMean,binnedIdx, *_ = scs.binned_statistic(idx, 1 - acc_low_t, statistic=np.nanmean, bins = temp_mold, range=(idx.min(),idx.max()))
-    binnedMean1 = pd.Series(binnedMean).rolling(smooth2,1).apply(lambda x : np.nanmean(x))
-    diff1 = np.hstack(((0), np.diff(binnedMean1)))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
 
-    binnedMean,binnedIdx, *_ = scs.binned_statistic(idx, acc_high_t, statistic=np.nanmean, bins = temp_mold, range=(idx.min(),idx.max()))
-    binnedMean = pd.Series(binnedMean).rolling(smooth2,1).apply(lambda x : np.nanmean(x))
-    diff2 = np.hstack(((0), np.diff(binnedMean)))
+        binnedMean,binnedIdx, *_ = scs.binned_statistic(idx, 1 - acc_low_t, statistic=np.nanmean, bins = temp_mold, range=(idx.min(),idx.max()))
+        binnedMean1 = pd.Series(binnedMean).rolling(smooth2,1).apply(lambda x : np.nanmean(x))
+        diff1 = np.hstack(((0), np.diff(binnedMean1)))
+
+        binnedMean,binnedIdx, *_ = scs.binned_statistic(idx, acc_high_t, statistic=np.nanmean, bins = temp_mold, range=(idx.min(),idx.max()))
+        binnedMean = pd.Series(binnedMean).rolling(smooth2,1).apply(lambda x : np.nanmean(x))
+        diff2 = np.hstack(((0), np.diff(binnedMean)))
     
     st = np.mean(np.hstack((binnedMean1[0:startRange],binnedMean[0:startRange])))
 

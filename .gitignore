@@ -165,3 +165,7 @@ cython_debug/
 *.zip
 data/
 new_data/
+
+_MACOSX/
+
+.DS_Store

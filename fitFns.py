@@ -7,26 +7,19 @@ import scipy.stats as scs
 import scipy.special as spc
 import pandas as pd
 
-## BADS Point Estimate Fitting
-
-def getLL(p, stim, choice, fx):
-    
-    f = fx(p,stim)
-    
-    f[f > 0.999] = 0.999
-    f[f < 0.001] = 0.001
-    
-    ll = 0
-
-    lowC = f[choice == 0]
-    ll -= np.sum(np.log10(1 - lowC))
-
-    highC = f[choice == 1]
-    ll -= np.sum(np.log10(highC))
-
-    return ll
-
 def psychFn(p, x = np.linspace(np.log2(6000),np.log2(28000),50)):
+
+    '''
+    transforms frequency values into p("High") values based on parameters p
+
+    Args: 
+    p: parameters to function fx, structured as [gamma mu sigma lambda]
+    x: stimulus frequencies: default is 50 values spanning the frequency range for visualizing the full psychometric
+        function, but this function can also be used to return the p("H") for presented stimuli for fitting purposes
+
+    Returns:
+    f: p("H") corresponding to each frequency value in x
+    '''
 
     if x.any() == None:
         x = np.linspace(np.log2(6000),np.log2(28000),50)
@@ -36,6 +29,8 @@ def psychFn(p, x = np.linspace(np.log2(6000),np.log2(28000),50)):
         f = p[0] * p[1] + (1 - p[1]) * scs.norm.cdf(x, 13.8, 0.001)
 
     return f
+
+# Define fit structures for fitting testing or training data with psychometric function
 
 defaultFitStruct = {
     'x0' : np.array([0.5, 13.5, 0.4, 0.1]),
@@ -55,17 +50,65 @@ trainingFitStruct = {
     'fx' : psychFn,
 }
 
-def fitBADS(sampled, st = defaultFitStruct, nF = 1):
+def getLL(p, stim, choice, fx):
+
+    '''
+    calculates negative log-likelihood from psychometric function parameters and behavioral data
+
+    Args: 
+    p: parameters to function fx
+    stim: stimulus input to function fx
+    choice: actual behavioral choice to stimulus stim
+    fx: function handle for psychometric function
+
+    Returns:
+    ll: negative log-likelihood to potentially minimize
+    '''
+
+    f = fx(p,stim)
+    
+    f[f > 0.999] = 0.999
+    f[f < 0.001] = 0.001
+    
+    ll = 0
+
+    lowC = f[choice == 0]
+    ll -= np.sum(np.log10(1 - lowC))
+
+    highC = f[choice == 1]
+    ll -= np.sum(np.log10(highC))
+
+    return ll
+
+
+
+
+def fitBADS(behavior, st = defaultFitStruct, nF = 1):
+
+    '''
+    fit psychometric function to data using PyBADS
+
+    Args: 
+    behavior: pandas dataframe with 'stimulus frequency' and 'choice' columns
+    st: structure for fit, with fit initialization and boundary parameters
+    nf: number of runs from different starting points: default is 1, currently structured so anything other than 1 is, well, 2 (so 2^4 = 16 runs)
+        - this currently is set up to work with the defaultFitStruct, not the trainingFitStruct, but can be easily changed by editing line 108-9
+
+    Returns:
+    fit_params: fit parameters for each run (sorted by negative log-likelihood)
+    y_fit: associated negative log-likelihoods
+    function: function used, so that the p("H") values can be recreated
+    '''
 
     options = dict(display = 'off')
-    target = lambda p: getLL(p, sampled['stimulus_frequency'], sampled['choice'], fx = st['fx'])
+    target = lambda p: getLL(p, behavior['stimulus_frequency'], behavior['choice'], fx = st['fx'])
     
     if nF == 1:
         x0 = np.zeros((1,4))
         x0[0] = st['x0']
     else:
-        x0t = np.zeros((4,2))
-        a = (0,1,2,3)
+        x0t = np.zeros((4,2)) # <- edit here to (2,2) if running multiple starting points on training data fit structure (so not fitting threshold or sigma)
+        a = (0,1,2,3) # <- edit here to (0,1) if running multiple starting points on training data fit structure (so not fitting threshold or sigma)
         for ai in a:
             x0t[ai] = [st['plausible_lower_bounds'][ai], st['plausible_upper_bounds'][ai]]
 
@@ -101,16 +144,20 @@ def fitBADS(sampled, st = defaultFitStruct, nF = 1):
 
     return fit_params, y_fit, function
 
-def psychLapseReg(p, x):
-    # mu, sigma, lambd, gamma
-    cd = 0.5 + 0.5 * spc.erf((x-p[0])/(p[1]*np.sqrt(2)))
-    yt = p[2]*p[3] + (1-p[2]) * cd
-    return yt
-
 ## Ensure that training tones are not overrepresented
 
 def rebalanceStim(bDF):
-    
+
+    '''
+    ensures that training tones are not overrepresented by sampling the minimum number of presented stimuli from all 3 categories
+
+    Args: 
+    bDF: behavioral dataframe with 'stimulus_category' column
+
+    Returns:
+    sampledDF: behavioral dataframe, now balanced so that there's the same number of trials for low/probe/high
+    '''   
+
     probes = bDF[bDF['stimulus_category'] == 3]
     low = bDF[bDF['stimulus_category'] == 1]
     high = bDF[bDF['stimulus_category'] == 2]
@@ -134,7 +181,24 @@ def rebalanceStim(bDF):
 ## Full Fitting Function
 
 def getPsychFit(D, stc = 'default', nF = 1, fitMethod = 'bads'):
-    
+
+    '''
+    Fitting wrapper to take behavioral data, fit it, and output fit results
+
+    Args: 
+    D: Behavioral dictionary as outputted by, for example, 'analysis_GenerateTrajectories'. Contains curated behavioral data and session indices
+    stc: structure option: if you only want to fit training data without probes, input "training" and the psychometric threshold and sigma won't
+        be fit, just the guess rate and lapse rate. default is to fit all 4 parameters of the psychometric function
+    nF: number of runs from different starting points: default is 1, currently structured so anything other than 1 is, well, 2 (so 2^4 = 16 runs)
+        - this currently is set up to work with the defaultFitStruct, not the trainingFitStruct, but can be easily changed by editing line 108-9
+    fitMethod: Only option right now is 'bads', can be modified to switch from point estimates
+        to distribution fitting with pymc if preferred
+
+    Returns:
+    saveDict: essentially returns information from dictionary D, but separated based on session and with fit results/nLL included. Individual
+        session information can be accessed through saveDict['1'] for session 1, etc.
+    '''    
+
     if stc == 'training':
         st = trainingFitStruct
     else:
@@ -180,22 +244,19 @@ def getPsychFit(D, stc = 'default', nF = 1, fitMethod = 'bads'):
         
     return saveDict    
 
-
-# Correlation Statistics
-
-def calculate_pvalues_pearson(df):
-    dfcols = pd.DataFrame(columns=df.columns)
-    pvalues = dfcols.transpose().join(dfcols, how='outer')
-    corr = dfcols.transpose().join(dfcols, how='outer')
-    for r in df.columns:
-        for c in df.columns:
-            tmp = df[df[r].notnull() & df[c].notnull()]
-            res = scs.pearsonr(tmp[r], tmp[c])
-            pvalues[r][c] = round(res.pvalue, 3)
-            corr[r][c] = round(res.statistic, 3)
-    return pvalues, corr
-
 def calculate_pvalues_spearman(df):
+
+    '''
+    Calculate spearman's rho correlation coefficient and associated p-value
+
+    Args: 
+    df: dataframe with two columns to be correlated against each other
+
+    Returns:
+    pvalues: p-values of correlation
+    corr: Spearman's rho
+    '''
+
     dfcols = pd.DataFrame(columns=df.columns)
     pvalues = dfcols.transpose().join(dfcols, how='outer')
     corr = dfcols.transpose().join(dfcols, how='outer')

@@ -1,3 +1,5 @@
+## Set of functions for running, simulating and fitting reinforcement learning model
+
 import numpy as np
 import pandas as pd
 import random
@@ -7,6 +9,21 @@ import helperFns as mf
 curPath = os.path.abspath(os.getcwd())
 
 def simulateLearning(mp, stimCat = None):
+
+    '''
+    Simulate reinforcement learning model from parameters
+
+    Args: 
+    mp: model parameters
+    stimCat: stimulus categories. If None, categories are simulated.
+
+    Returns:
+    stim_stored: 1 x N vector, stimulus category on each trial
+    choice: 1 x N vector, simulated choice on each trial
+    reward: 1 x N vector, whether each trial was rewarded
+    Q_stored: 2 x N vector, Q-values for each trial
+    choiceProb: 1 x N vector, underlying choice probability for simulated choices
+    '''
 
     Q = mp['init_Q'].copy()
 
@@ -73,9 +90,20 @@ def simulateLearning(mp, stimCat = None):
 
     return stim_stored, choice, reward, Q_stored, choiceProb
 
-#### fit learning
-
 def fitLearning(guesses, mp, choice, stim_cat):
+
+    '''
+    Fit reinforcement learning model (well, specifically, calculate negative log-likelihood from model parameters and behavioral data)
+
+    Args: 
+    guesses: list of parameters to be fit. Can be length 2, 3 or 4 depending on complexity of model to be fit
+    mp: some sort of default model parameters dictionary. Relevant parameters are replaced by "guesses" for each run
+    choice: choice data to be fit against
+    stim_cat: stimulus category to be fit against
+
+    Returns:
+    negLL: negative log-likelihood for chosen model parameters
+    '''
 
     if guesses is not None:
         if len(guesses) == 4:
@@ -138,9 +166,26 @@ def fitLearning(guesses, mp, choice, stim_cat):
 
         return negLL
 
-####
-
 def generateLearningCurves(stim_stored, choice, choiceProb, learnedCutOff = 0.75):
+
+    '''
+    Generates learning curves from simulated reinforcement learning model data
+
+    Args: 
+    stim_stored: stimulus category for each trial
+    choice: subject choice on each trial (binary)
+    choiceProb: underlying choice probability on each trial
+    learnedCutOff: will output index of time point where this accuracy level is reached
+
+    Returns:
+    H: Category choices in response to high category stimuli (low category trial replaced with np.nan)
+    L: Category choices in response to low category stimuli (high category trial replaced with np.nan)
+    binH: Smoothed category choices in response to high category stimuli
+    binL: Smoothed category choices in response to low category stimuli
+    H_inter: Interpolated choice probability in response to high category stimuli
+    L_inter: Interpolated choice probability in response to low category stimuli
+    eOT: index at which lowest smoothed category choices reaches learnedCutOff
+    '''
 
     T = len(choice)
 
@@ -174,6 +219,18 @@ def generateLearningCurves(stim_stored, choice, choiceProb, learnedCutOff = 0.75
 
 def loadModelFit(num_params, top = 1, folder = 'data/RL_Data'):
 
+    '''
+    Loads reinforcement model fits
+
+    Args: 
+    num_params: essentially which model type. 3: simple model, 4: choice-history model
+    top: how many fit results to take? Default is only the one with the lowest log-likelihood, but if you're interested in plotting nLL to see distribution, set higher value
+    folder: where to look for the data
+
+    Returns:
+    f: pandas dataframe with fit information
+    '''
+
     keyword = 'fits_' + str(num_params) + 'param'
 
     file = mf.find_files('.csv', keyword, folder)
@@ -193,6 +250,20 @@ def loadModelFit(num_params, top = 1, folder = 'data/RL_Data'):
     return f
 
 def simulateFromFit(ID, mfN, R = 1, folder = 'data/RL_Data'):
+
+    '''
+    Loads reinforcement model fits and then simulates choice data from the best-fitting parameters
+
+    Args: 
+    ID: mouse ID to simulate
+    mfN: essentially which model type. 3: simple model, 4: choice-history model
+    top: how many fit results to take? Default is only the one with the lowest log-likelihood, but if you're interested in plotting nLL to see distribution, set higher value
+    R: number of runs to simulate
+    folder: where to look for the data
+
+    Returns:
+    res: dictionary with simulated choice data and actual choice data
+    '''
 
     dataBase = os.path.abspath(os.path.join(curPath,"data/Trajectories/with_bias_learning"))
 
@@ -265,6 +336,16 @@ def simulateFromFit(ID, mfN, R = 1, folder = 'data/RL_Data'):
     return res
 
 def simulateFromParameters(model_params, R = 1):
+
+    '''
+    Simulates choice data from the chosen model parameters
+
+    Args: 
+    model_params: dictionary with model parameters
+
+    Returns:
+    res: dictionary with simulated choice data and actual choice data
+    '''
 
     print('Starting Learning Simulation')
 

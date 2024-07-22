@@ -7,8 +7,20 @@ import pandas as pd
 import pickle
 import scipy.stats as scs
 
-# Locating desired files 
 def find_files(fileend, keyword, folder):
+
+    '''
+    Locates desired files
+
+    Args:
+    fileend: type of file required (for example, '.csv')
+    keyword: string to look for in file name
+    folder: folder to start in (but will walk through subfolders)
+
+    Returns:
+    result: list of files that match query
+    '''
+
     result = []
     for root, dirs, files in os.walk(folder):
         for file in files:
@@ -16,10 +28,9 @@ def find_files(fileend, keyword, folder):
                 result.append(os.path.join(root, file))
     return result
 
-# Loading .MAT Files
 def _todict(matobj):
     '''
-    A recursive function which constructs from matobjects nested dictionaries
+    Thanks to 'mergen', from StackOverflow: a recursive function which constructs from matobjects nested dictionaries
     '''
     dict = {}
     for strg in matobj._fieldnames:
@@ -32,8 +43,7 @@ def _todict(matobj):
 
 def _check_keys(dict):
     '''
-    checks if entries in dictionary are mat-objects. If yes
-    todict is called to change them to nested dictionaries
+    Thanks to 'mergen', from StackOverflow: changes mat-objects to nested dicts
     '''
     for key in dict:
         if isinstance(dict[key], spio.matlab.mio5_params.mat_struct):
@@ -42,24 +52,52 @@ def _check_keys(dict):
 
 def loadmat(filename):
     '''
-    this function should be called instead of direct spio.loadmat
-    as it cures the problem of not properly recovering python dictionaries
-    from mat files. It calls the function check keys to cure all entries
-    which are still mat-objects
+    Thanks to 'mergen', from StackOverflow: cures all entries from spio.loadmat that aren't changed
     '''
     data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True)
     return _check_keys(data)
 
 def loadSavedFits(ID, dataBase, ending = '_trainingDataBias'):
+
+    '''
+    Locates and loads dictionaries created from, for example, analysis_GenerateTrajectories
+
+    Args:
+    ID: mouse ID to check
+    dataBase: folder to start with
+    ending: keyword to specify what type of trajectories we're extracting
+
+    Returns:
+    loaded_dict: dictionary with (likely) weights, choice behavior, and potentially psychometric fit results
+    '''
+    
     file = find_files('.pkl', ID + ending, dataBase)[0]
     with open(file, 'rb') as f:
         loaded_dict = pickle.load(f)
     return loaded_dict
 
-# Curating and transforming behavioral data
-
 def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessionCutoff = None, 
          accCutoff = 0, removeProbes = True, nrCheck = False, txt = None, untilTesting = True, spec_select = False):
+
+    '''
+    Locates and loads raw behavioral matlab files, and transforms them to the format needed for PsyTrack. 
+
+    Args:
+    ID: mouse ID to check
+    keyword: string to look for in behavior files: default is "training", but "testing" is another option
+    cutoff: minimum number of non-probe trials
+    transformation_weight: tau for tau transformation of weights
+    sessionCutoff: minimum number of trials in session (default is None)
+    accCutoff: minimum accuracy on non-probe trials across session
+    removeProbes: whether to consider probe trials: not an issue on training data, but on testing data, if interested in doing direct comparisons to training data, can be useful to remove
+    nrCheck: whether to also extract information about the no-response probabilities, which are removed in this curation process: if True, also returns nrDict
+    txt: whether to output updates to the console
+    untilTesting: whether to use all data up until testing sessions or further curate the data to have trajectories end at similar accuracy points
+    spec_select: if False, excludes sessions that, at time of behavior, were aborted or marked as unusable due to external factors
+
+    Returns:
+    D: dictionary with curated choice behavior in a format to be fed into psytrack, or fit with RL model, or clustered.
+    '''
 
     curPath = os.path.abspath(os.getcwd())
     base =  os.path.abspath(os.path.join(curPath,"data/MouseData/"))
@@ -408,9 +446,23 @@ def getD(ID, keyword = "training", cutoff = 50, transformation_weight = 2, sessi
     else:
         return D
 
-# Curating sessions
 def curateSessions(matFiles,ID,keyword, untilTesting):
-    
+
+    '''
+    Curates sessions based on desired choices
+
+    Args:
+    matFiles: vector of files to consider
+    ID: mouse ID
+    keyword: only want to curate training data, don't want to mess with the testing data
+    untilTesting: if untilTesting, include sessions up until testing probes introduced. Otherwise, include up until accuracy threshold reached.
+        This comes up when, for example, a mouse reaches the threshold on a Friday, and we want to make sure the behavior is stable on Monday so
+        we run an additional training session.
+
+    Returns:
+    curated matFiles vector
+    '''  
+
     if keyword == "training":
         if untilTesting == False:
             match ID:
@@ -517,6 +569,16 @@ def curateSessions(matFiles,ID,keyword, untilTesting):
 
 def getStimFromIdx(mat_contents):
 
+    '''
+    For some older mice, stimulus index is saved as a separate file, so we need to access it to determine the stimuli used
+
+    Args:
+    mat_contents: matlab file of raw behavioral data and session information
+
+    Returns:
+    stim: vector of stimuli presented during session
+    '''
+
     curPath = os.path.abspath(os.getcwd())
     stim_base = os.path.abspath(os.path.join(curPath,"data/Stimuli/"))
 
@@ -533,10 +595,22 @@ def getStimFromIdx(mat_contents):
 
 def getResp(acc, stimulus_category, mat_contents, respDir = ()):    
 
+    '''
+    Get choice response of mice from behavioral information
+
+    Args:
+    acc: vector of whether mouse got trial correct
+    stimulus_category: vector of presented category
+    mat_contents: matlab file of raw behavioral data to check reward contingency (High -> CW or CCW)
+    respDir: for some older mice, choice was coded as response direction
+
+    Returns:
+    choice: vector of mouse response choices 
+    '''
+
     choice = np.array(stimulus_category.copy())
     choice[acc == 0] = 1 - choice[acc == 0]
     choice = np.where(acc == 2, np.nan, choice)
-    cc = choice.copy()
 
     if  len(respDir) > 0:
 
@@ -550,7 +624,17 @@ def getResp(acc, stimulus_category, mat_contents, respDir = ()):
     return choice
 
 def getRT(taskFile):
-    
+
+    '''
+    Get trial response times from task file.
+
+    Args:
+    taskFile: csv file from behavior session that includes time stamps for stimulus onsets and choices
+
+    Returns:
+    rt: response times for each trial for the session
+    '''
+
     try:
 
         with open(taskFile, 'r') as f:
@@ -598,8 +682,6 @@ def getRT(taskFile):
 
             stim_times = np.array([timestamp[idx] for idx, x in enumerate(tag) if 'STIMON' == x])
             response_times = np.array([timestamp[idx + 1] for idx, x in enumerate(tag) if 'RESPON' == x and idx + 1 < len(tag)])
-            #response_tags = [tag[idx + 2] for idx, x in enumerate(tag) if 'RESPON' == x and idx + 1 < len(tag)]
-
             stim_times = stim_times[0:len(response_times)]
             rt = response_times - stim_times
 
@@ -612,8 +694,17 @@ def getRT(taskFile):
 
     return rt
 
-# Generate structure with information about muscimol and control session dates
 def muscimolStruct():
+
+    '''
+    Generate structure with information about muscimol and control session dates
+
+    Args: 
+    None, just called when needed to access relevant dates
+
+    Returns:
+    injectionDates: nested dictionary of each mouse's dates for control and inactiviation sessions
+    '''
 
     injectionDates = {}
 
@@ -683,6 +774,18 @@ def muscimolStruct():
     return injectionDates
 
 def calculate_pvalues_spearman(df):
+
+    '''
+    Calculate spearman's rho correlation coefficient and associated p-value
+
+    Args: 
+    df: dataframe with two columns to be correlated against each other
+
+    Returns:
+    pvalues: p-values of correlation
+    corr: Spearman's rho
+    '''
+    
     dfcols = pd.DataFrame(columns=df.columns)
     pvalues = dfcols.transpose().join(dfcols, how='outer')
     corr = dfcols.transpose().join(dfcols, how='outer')

@@ -1,14 +1,23 @@
 ## Set of functions for transforming and clustering trajectories
 
 import scipy.stats as scs
-from scipy.signal import butter,filtfilt
 import numpy as np
 import warnings
 import pandas as pd
 import helperFns as mf
 
-# Extracting Variables From Training Sessions
-def extractPredictorsFromWeights(loaded_dict, nTrain):
+def extractPredictorsFromWeights(loaded_dict, nTrain = 1):
+
+    '''
+    Extracts subject ID and drift in GLM choice bias from dict generated from, for example, analysis_GenerateTrajectories
+
+    Args:
+    loaded_dict: dictionary containing PsyTrack weights generated from, for example, analysis_GenerateTrajectories
+    nTrain: number of training sessions, default is just the final training session
+
+    returns:
+    df1t: pandas dataframe with ID and drift in GLM choice bias
+    '''
 
     last = np.sum(loaded_dict['dayLength'][-nTrain:])
     psytrack_weights = loaded_dict['psytrack']['wMode']
@@ -30,8 +39,19 @@ def extractPredictorsFromWeights(loaded_dict, nTrain):
 
     return df1t
 
-# Combine Testing Data Sessions
-def extractFromTestingSession(loaded_dict, nTest, delay = 0, summary = True):
+def extractFromTestingSession(loaded_dict, nTest = 3, delay = 0):
+
+    '''
+    Extracts psychometric parameters from dict generated from, for example, getPsychFit function in fitFns.py file
+
+    Args:
+    loaded_dict: dictionary containing choice behavior and psychometric fit results generated from, for example, getPsychFit function in fitFns.py file
+    nTest: number of testing sessions to analyze (default is first 3)
+    delay: if interested in skipping a number of sessions to test strength of correlation across longer time gaps
+
+    returns:
+    tempS: pandas dataframe with psychometric parameters
+    '''
 
     fitType = loaded_dict['1']['fit_method']
     sessionIDs = np.array(list(loaded_dict.keys()))
@@ -117,19 +137,27 @@ def extractFromTestingSession(loaded_dict, nTest, delay = 0, summary = True):
     tempS['exAcc'] = np.mean(exAccVec)
     return tempS
 
-######
-
-def butter_lowpass_filter(data, cutoff, fs, order):
-    nyq = fs / 2
-    normal_cutoff = cutoff / nyq
-    b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    y = filtfilt(b, a, data)
-    return y
-
-# Smoothing Raw Conditional Accuracies Into Learning Curves
-
 def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2 = 5, sameSize = True):       
-    
+
+    '''
+    Subsamples and smooths category-conditional learning traces- can also be applied to, for example, reinforcement learning model weights as they evolve
+
+    Args:
+    acc_low: accuracy conditioned on low category stimuli
+    acc_high: accuracy conditioned on high category stimuli
+    nPoints: nPoints to subsample to
+    smoothF: smoothing factor to use for interpolating traces
+    smooth2: smoothing to use for subsampling
+    sameSize: whether to make all traces same length
+
+    returns:
+    nPoints: actual nPoints used
+    wModeRaws: raw conditional traces, concatenated
+    wModeSigned: conditional traces signed based on first session preference
+    wModeDiff: trace of rate of change of conditional traces
+    wModeAvg: average trace of both conditional traces
+    '''
+
     wModeRaws = []
     wModeSigned = []
     wModeDiff = []
@@ -148,7 +176,7 @@ def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2
 
     wModeRaws = [] 
 
-    startRange = int(np.round(nPoints/11)) #9
+    startRange = int(np.round(nPoints/11))
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -178,13 +206,11 @@ def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2
         wModeSigned.extend(1 - binnedMean1)
 
         wModeAvg.extend(1 - (binnedMean1 + binnedMean)/2)
-        switch = 1
     else:
         wModeSigned.extend(binnedMean1)
         wModeSigned.extend(binnedMean)
         
         wModeAvg.extend((binnedMean1 + binnedMean)/2)
-        switch = 0
 
     wModeSigned = np.array(wModeSigned)
 
@@ -192,13 +218,27 @@ def smoothLearningTraces(acc_low, acc_high, nPoints = 100, smoothF = 15, smooth2
 
 def generateTraceMats(IDs, dataBase, smoothF = 15, nPoints = 100, smooth2 = 5, sizeQ = True):
 
-    rawTraceMatResized = np.full([len(IDs),nPoints*3], np.nan)
-    signedTraceMatResized = np.full([len(IDs),nPoints*2], np.nan)
-    diffTraceMatResized = rawTraceMatResized.copy()
+    '''
+    More applicable code to generate signed and average conditional traces directly from files, including intermediate steps
 
-    nPointsVec = np.full([len(IDs),1], np.nan)
+    Args:
+    IDs: mouse IDs to include
+    dataBase: what folder saved trajectory dictionaries are in (will be data/Trajectories/with_bias_learning)
+    nPoints: nPoints to subsample to
+    smoothF: smoothing factor to use for interpolating traces
+    smooth2: smoothing to use for subsampling
+    sizeQ: whether to make all traces same length
 
-    avgTraceMatResized = np.full([len(IDs),nPoints], np.nan)
+    returns:
+    signedTraceMat: conditional traces signed based on first session preference
+    avgTraceMat: average trace of both conditional traces
+    '''
+
+    rawTraceMat = np.full([len(IDs),nPoints*3], np.nan)
+    signedTraceMat = np.full([len(IDs),nPoints*2], np.nan)
+    diffTraceMat = rawTraceMat.copy()
+
+    avgTraceMat = np.full([len(IDs),nPoints], np.nan)
 
     for idi, ID in enumerate(IDs):
 
@@ -216,28 +256,28 @@ def generateTraceMats(IDs, dataBase, smoothF = 15, nPoints = 100, smooth2 = 5, s
 
         nPointsT, wModeRaws, wModeSigned, wModeDiff, wModeAvg = smoothLearningTraces(acc_low, acc_high, nPoints = nPoints, smoothF = smoothF, smooth2 = smooth2, sameSize = sizeQ)
 
-        if np.size(wModeRaws) > np.size(rawTraceMatResized,1):
-            adn = np.full([np.size(rawTraceMatResized,0),np.size(wModeRaws) - np.size(rawTraceMatResized,1)], np.nan)
+        if np.size(wModeRaws) > np.size(rawTraceMat,1):
+            adn = np.full([np.size(rawTraceMat,0),np.size(wModeRaws) - np.size(rawTraceMat,1)], np.nan)
             
-            rawTraceMatResized = np.hstack([rawTraceMatResized, adn])
-            signedTraceMatResized = np.hstack([signedTraceMatResized, adn])
-            diffTraceMatResized = np.hstack([diffTraceMatResized, adn])
-            avgTraceMatResized = np.hstack([avgTraceMatResized, adn])
+            rawTraceMat = np.hstack([rawTraceMat, adn])
+            signedTraceMat = np.hstack([signedTraceMat, adn])
+            diffTraceMat = np.hstack([diffTraceMat, adn])
+            avgTraceMat = np.hstack([avgTraceMat, adn])
 
-        elif np.size(wModeRaws) < np.size(rawTraceMatResized,1):
-            adn = np.squeeze(np.full([1, np.size(rawTraceMatResized,1) - np.size(wModeRaws)], np.nan))
+        elif np.size(wModeRaws) < np.size(rawTraceMat,1):
+            adn = np.squeeze(np.full([1, np.size(rawTraceMat,1) - np.size(wModeRaws)], np.nan))
 
             wModeRaws = np.hstack([wModeRaws, adn])
             wModeSigned = np.hstack([wModeSigned, adn])
             wModeDiff = np.hstack([wModeDiff, adn])
             wModeAvg = np.hstack([wModeAvg, adn])
 
-        rawTraceMatResized[idi,:] = wModeRaws
-        signedTraceMatResized[idi,:] = wModeSigned
-        diffTraceMatResized[idi,:] = wModeDiff
-        avgTraceMatResized[idi,:] = wModeAvg
+        rawTraceMat[idi,:] = wModeRaws
+        signedTraceMat[idi,:] = wModeSigned
+        diffTraceMat[idi,:] = wModeDiff
+        avgTraceMat[idi,:] = wModeAvg
 
-    signedTraceMatResized = pd.DataFrame(signedTraceMatResized, index = IDs)
-    avgTraceMatResized = pd.DataFrame(avgTraceMatResized, index = IDs)
+    signedTraceMat = pd.DataFrame(signedTraceMat, index = IDs)
+    avgTraceMat = pd.DataFrame(avgTraceMat, index = IDs)
 
-    return signedTraceMatResized, avgTraceMatResized
+    return signedTraceMat, avgTraceMat
